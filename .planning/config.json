@@ -1,0 +1,29 @@
+{
+  "workflow_mode": "interactive",
+  "planning": {
+    "commit_docs": true,
+    "search_gitignored": false
+  },
+  "agents": {
+    "researcher": true,
+    "plan_checker": true,
+    "verifier": true
+  },
+  "model_profile": "balanced",
+  "project": {
+    "name": "pavement-pci-thesis",
+    "type": "graduation_thesis",
+    "university": "University of Transport Technology (UTRAN)",
+    "institute": "Institute of Railway Technology and Transport",
+    "center": "BIM and AI Technology Center"
+  },
+  "strategy": {
+    "version": "v2-pretrained-weights",
+    "pivot_date": "2026-05-21",
+    "detection_model": "yolo12s_seed0_best.pt",
+    "detection_source": "SreekarAditya/yolo-rdd2022-benchmark",
+    "segmentation_tier2": "FastSAM-s",
+    "segmentation_tier3": "YOLOv12s-seg (Colab)",
+    "pci_standard": "ASTM D6433"
+  }
+}
