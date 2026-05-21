@@ -72,12 +72,13 @@
 
 ### Steps
 1. Create `src/ui/main_window.py` — `MainWindow(QMainWindow)`
-2. Layout: Toolbar (top) | Splitter: Image Viewer (left) | PCI Panel (right) | Status Bar (bottom)
-3. Toolbar actions: Open Image, Open Folder, Run Detection, Save Image, Export Report, Settings, Theme Toggle
-4. Status bar: shows inference time, detection count, PCI score
-5. Menu bar: File, Analysis, View, Help (minimal)
-6. Window title from strings module
-7. Minimum size: 1200×700
+2. Layout: Toolbar (top) | QSplitter: Image Viewer (65%, left) | PCI Panel (35%, right) | Status Bar (bottom) — D-08
+3. Splitter constraints: min width image=400px, PCI=250px — D-08
+4. Toolbar actions: Open Image, Open Folder, Run Detection, Save Image, Export Report, Settings, Theme Toggle
+5. Status bar: shows inference time, detection count, PCI score
+6. Menu bar: File, Analysis, View, Help (minimal)
+7. Window title from strings module
+8. Minimum size: 1200×700
 
 ### Files Created
 - `src/ui/main_window.py` — Main window class
@@ -275,7 +276,7 @@
 ### Steps
 1. "Open Image" → `QFileDialog.getOpenFileName()` with image filter
 2. "Open Folder" → `QFileDialog.getExistingDirectory()` for batch processing
-3. Batch mode: process all images in folder, show results in table
+3. Batch mode (D-09): process all images silently → results table with per-image PCI → section PCI at bottom. Progress bar during processing.
 4. Save annotated images to `outputs/images/`
 5. Supported formats: jpg, jpeg, png, bmp
 
@@ -341,6 +342,7 @@
 ## File Structure After Phase 3
 
 ```
+app.py                         # Entry point — D-10
 src/ui/
 ├── __init__.py
 ├── main_window.py          # MainWindow(QMainWindow)
@@ -350,6 +352,6 @@ src/ui/
 ├── widgets/
 │   ├── __init__.py
 │   ├── image_viewer.py     # ImageViewer(QGraphicsView)
-│   ├── pci_gauge.py        # PCIGauge(QWidget) — custom painted
+│   ├── pci_gauge.py        # PCIGauge(QWidget) — semicircular gauge (D-04)
 │   └── damage_table.py     # DamageTable(QWidget) — QTableWidget wrapper
 ```
