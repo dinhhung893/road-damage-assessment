@@ -72,7 +72,7 @@ class DetectionWorker(QThread):
 
             # Convert DetectionResult to PCI input format
             img_h, img_w = det_result.image_shape
-            image_area_sqft = sample_unit_area  # use configured sample unit area
+            image_area_px = img_h * img_w
 
             # Build damage input list from detections
             damage_input = []
@@ -86,8 +86,7 @@ class DetectionWorker(QThread):
 
             pci_result = pci_engine.calculate_pci(
                 damage_input,
-                image_area_sqft=image_area_sqft,
-                image_shape=det_result.image_shape,
+                image_area_px=image_area_px,
             )
 
             self.finished.emit(pci_result, det_result)
@@ -164,10 +163,10 @@ class BatchDetectionWorker(QThread):
                                 "confidence": det.confidence,
                             })
 
+                        img_h, img_w = det_result.image_shape
                         pci_result = pci_engine.calculate_pci(
                             damage_input,
-                            image_area_sqft=sample_unit_area,
-                            image_shape=det_result.image_shape,
+                            image_area_px=img_h * img_w,
                         )
 
                     results.append((str(img_path), pci_result, det_result))

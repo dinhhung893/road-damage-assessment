@@ -5,5 +5,6 @@
   "sample_unit_area_sqft": 5000,
   "pci_data_path": "data/pci_astm_d6433.json",
   "output_dir": "outputs",
-  "language": "vi"
+  "language": "vi",
+  "theme": "dark"
 }
