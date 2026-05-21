@@ -49,8 +49,9 @@
 
 ### D-04: PCI Gauge as Custom Widget
 - **Decision:** Custom `PCIGaugeWidget` painted with `QPainter` — semicircular gauge with color bands
-- **Rationale:** No ready-made gauge in qfluentwidgets. Custom painting gives full control over ASTM rating colors and Vietnamese labels.
-- **Alternative rejected:** QDial/QProgressBar — not visually representative of PCI scale
+- **Rationale:** No ready-made gauge in qfluentwidgets (Pro version also lacks gauge). Custom painting gives full control over ASTM rating colors and Vietnamese labels. Visual centerpiece for thesis defense demo — worth the ~2h effort.
+- **Alternative rejected:** QDial/QProgressBar/ProgressRing — not visually representative of PCI scale. Less impressive for demo.
+- **Confirmed:** User selected full semicircular gauge over simpler approach (2026-05-21)
 
 ### D-05: Threading for Inference
 - **Decision:** Use `QThread` + signals/slots for detection and PCI calculation
@@ -66,6 +67,12 @@
 - **Decision:** All UI labels in Vietnamese. English as optional config setting.
 - **Rationale:** Thesis defense in Vietnamese. Enterprise internship deliverable targets Vietnamese road management.
 - **Implementation:** String constants in a `strings.py` module, switchable via config `language` key
+
+### D-08: Window Layout Ratios
+- **Decision:** QSplitter with image viewer 65% / PCI panel 35%, both resizable
+- **Rationale:** Image needs more space for annotation visibility. PCI panel is compact data display.
+- **Constraints:** Minimum widths — image viewer 400px, PCI panel 250px
+- **Alternative rejected:** Fixed panels — too inflexible for different screen sizes
 
 ---
 
@@ -89,9 +96,21 @@
 
 ---
 
+### D-09: Batch Processing UX
+- **Decision:** Process all images silently → show results table with per-image PCI → section PCI at bottom. Progress bar during processing.
+- **Rationale:** ASTM survey process: inspect all sample units → aggregate to section. Batch mode mirrors this workflow.
+- **Alternative rejected:** One-by-one interactive — too slow for 20+ images, breaks survey flow
+
+### D-10: App Entry Point
+- **Decision:** `app.py` in project root — simple `python app.py` to launch
+- **Rationale:** Standard Python convention. Easy to find. Not buried in src/ui/. PyInstaller entry point.
+- **Implementation:** `app.py` creates `QApplication`, loads config, creates `MainWindow`, runs event loop
+
+---
+
 ## Deferred Ideas
 
-1. **Batch processing progress bar** — Show per-image progress in batch mode (Phase 3 stretch goal)
+1. **Batch processing progress bar** — Included in D-09 (no longer deferred)
 2. **Side-by-side original vs annotated** — GUI-08 requirement (Phase 4+)
 3. **Damage heatmap overlay** — GUI-09 requirement (Phase 4+)
 4. **PDF report export** — GUI-10 requirement (Phase 7b)
