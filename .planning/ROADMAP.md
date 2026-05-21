@@ -5,7 +5,7 @@
 ---
 
 ### Phase 1: Setup & Pretrained Model Integration
-**Status:** next
+**Status:** ✅ complete
 **Goal:** Thiết lập môi trường, tải pretrained YOLOv12s, export ONNX, test inference
 **Requirements:** DET-01, DET-02, DET-03, DET-04, DET-05, DET-06, DET-07, DET-08, INF-01, INF-03, INF-04, INF-05
 **Mode:** mvp
@@ -33,7 +33,7 @@
 ---
 
 ### Phase 2: PCI Calculation Engine (ASTM D6433) — ƯU TIÊN CAO NHẤT
-**Status:** pending
+**Status:** next
 **Goal:** Implement PCI calculation theo chuẩn ASTM D6433 với bbox proxy, dùng deduct value curves đã trích xuất từ slide chuyên môn
 **Requirements:** PCI-01, PCI-02, PCI-03, PCI-04, PCI-05, PCI-06, PCI-07, PCI-08, PCI-09, PCI-10, PCI-11, PCI-12
 **Depends on:** Phase 1

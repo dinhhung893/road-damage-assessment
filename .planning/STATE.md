@@ -2,9 +2,10 @@
 
 ## Current State
 - **Date:** 2026-05-21
-- **Phase:** Phase 1 — Setup & Pretrained Model Integration (next)
+- **Phase:** Phase 2 — PCI Engine (HIGHEST PRIORITY)
 - **Milestone:** V1.0 — MVP Detection + PCI (T1)
-- **Next:** Execute Phase 1
+- **Next:** Plan & Execute Phase 2
+- **Phase 1 Status:** ✅ COMPLETE (committed)
 
 ## Key Decisions
 1. **Detection:** YOLOv12s pretrained (yolo12s_seed0_best.pt) — mAP50=0.632, #1 on RDD2022 benchmark
@@ -12,7 +13,7 @@
 3. **Segmentation (T3):** YOLOv12s-seg — train trên Colab dùng Kaggle dataset đã convert
 4. **PCI:** ASTM D6433 standard (deduct value curves, CDV) — deduct value curves đã trích xuất từ slide chuyên môn PPTX (Slide 17-22) → data/pci_astm_d6433.json
 5. **GUI:** PySide6 + QSS Fluent-style (giữ nguyên)
-6. **Inference:** ONNX Runtime + DirectML (Intel HD 4400) — giữ nguyên
+6. **Inference:** Torch CPU (ultralytics .pt) — DirectML ONNX deferred (DmlGraphFusionHelper crash)
 7. **Visualization:** Supervision (Roboflow) — giữ nguyên
 8. **Confidence threshold:** 0.15 (benchmark recommends 0.10–0.20)
 
@@ -22,7 +23,7 @@ GUI:        PySide6 + QSS Fluent theme
 Detection:  YOLOv12s (pretrained, HuggingFace)
 Segmentation(T2): FastSAM-s
 Segmentation(T3): YOLOv12s-seg (Colab trained)
-Inference:  ONNX Runtime + DirectML (Intel HD 4400)
+Inference:  Torch CPU (ultralytics .pt) — DirectML ONNX deferred
 Vis:        Supervision (roboflow)
 Video:      OpenCV + ffmpeg (H.264)
 PCI:        ASTM D6433 (deduct value curves từ PPTX chuyên môn, CDV)
@@ -64,7 +65,9 @@ Dataset:    RDD2022 (47,420 images) — pretrained, không cần tải về loca
 - **Phase 7a+7b:** 4 tuần (2+2), fit vào đồ án tốt nghiệp
 
 ## Session Continuity
-- Last action: Bổ sung 36 đề xuất bổ sung vào REQUIREMENTS.md (61 requirements), ROADMAP.md (timeline + chi tiết), data file (survey_procedure + maintenance_recommendation)
-- Ready to: Execute Phase 1 (Setup & Pretrained Model Integration)
+- Last action: Phase 1 COMPLETE — detector module, torch CPU inference, 9/9 tests, benchmark done
+- Ready to: Plan & Execute Phase 2 (PCI Engine — HIGHEST PRIORITY)
 - Key insight: PCI đã sai 3 lần liên tiếp (G1-G2) do tự chế công thức. Slide chuyên môn CÓ SẴN bảng deduct value curves từ đầu. Phase 2 phải hoàn thiện TRƯỚC Phase 3.
-- Planning docs fully updated: REQUIREMENTS.md (v2), ROADMAP.md (v2.1 + timeline), STATE.md, PROJECT.md, data/pci_astm_d6433.json
+- Phase 1 artifacts: src/engine/detector.py, src/utils/config.py, src/utils/logging_setup.py, config/default.json, scripts/download_model.py, tests/test_detector.py
+- DirectML deferred: DmlGraphFusionHelper crash with YOLOv12 ONNX — revisit with newer onnxruntime or different model format
+- Model classes: longitudinal_crack(D00), transverse_crack(D10), alligator_crack(D20), pothole(D40)
