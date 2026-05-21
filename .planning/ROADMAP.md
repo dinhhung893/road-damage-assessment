@@ -33,7 +33,7 @@
 ---
 
 ### Phase 2: PCI Calculation Engine (ASTM D6433) — ƯU TIÊN CAO NHẤT
-**Status:** next
+**Status:** ✅ complete
 **Goal:** Implement PCI calculation theo chuẩn ASTM D6433 với bbox proxy, dùng deduct value curves đã trích xuất từ slide chuyên môn
 **Requirements:** PCI-01, PCI-02, PCI-03, PCI-04, PCI-05, PCI-06, PCI-07, PCI-08, PCI-09, PCI-10, PCI-11, PCI-12
 **Depends on:** Phase 1
@@ -66,7 +66,7 @@
 ---
 
 ### Phase 3: Desktop App Core (GUI)
-**Status:** pending
+**Status:** next
 **Goal:** Xây dựng giao diện PySide6 Fluent Design, tích hợp detection + PCI
 **Requirements:** VIS-01, VIS-02, VIS-03, GUI-01, GUI-02, GUI-03, GUI-04, GUI-05, GUI-06, GUI-11, GUI-12, GUI-13, GUI-14, INF-06
 **Depends on:** Phase 2 (CHỈ bắt đầu khi Phase 2 pass 100% tests)
