@@ -19,18 +19,17 @@ Phát hiện hư hỏng mặt đường chính xác + tính PCI chuẩn ASTM D64
 
 ### Validated
 
-(NONE — ship to validate)
+- [x] Phát hiện + phân loại 4 lớp hư hỏng (D00, D10, D20, D40) từ ảnh tĩnh — Phase 1 (DET-01~08)
+- [x] Tính toán PCI theo chuẩn ASTM D6433 (deduct value curves, CDV) — Phase 2 (PCI-01~12)
+- [x] Inference hoàn toàn local (Torch CPU) — Phase 1 (INF-01~05)
 
 ### Active
 
-- [ ] Phát hiện + phân loại 4 lớp hư hỏng (D00, D10, D20, D40) từ ảnh tĩnh
-- [ ] Segmentation vùng hư hỏng để đo diện tích chính xác
-- [ ] Tính toán PCI theo chuẩn ASTM D6433 (deduct value curves, CDV)
-- [ ] Trực quan hóa kết quả: annotated image, PCI chart, damage summary
-- [ ] Xử lý video input, xuất video đã annotate
-- [ ] Desktop GUI PySide6 + Fluent Design
-- [ ] Xuất báo cáo đánh giá (PDF)
-- [ ] Inference hoàn toàn local (ONNX Runtime + DirectML)
+- [ ] Segmentation vùng hư hỏng để đo diện tích chính xác (Phase 4)
+- [ ] Trực quan hóa kết quả: annotated image, PCI chart, damage summary (Phase 3)
+- [ ] Xử lý video input, xuất video đã annotate (Phase 5)
+- [ ] Desktop GUI PySide6 + Fluent Design (Phase 3)
+- [ ] Xuất báo cáo đánh giá (PDF) (Phase 7b)
 
 ### Out of Scope
 
@@ -93,12 +92,12 @@ Dự án đã trải qua 3 thế hệ (G1-G2-G3) và PCI đã sai 3 lần liên 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Dùng pretrained YOLOv12s thay vì tự train YOLO11n-seg | Tránh mất thời gian Colab, model tốt hơn (mAP50 0.632 vs target 0.60) | — Pending |
+| Dùng pretrained YOLOv12s thay vì tự train YOLO11n-seg | Tránh mất thời gian Colab, model tốt hơn (mAP50 0.632 vs target 0.60) | ✅ Validated — Phase 1 complete, 9/9 tests |
 | Kiến trúc 3 tầng (bbox→FastSAM→end-to-end) | MVP nhanh, cải tiến dần, không block | — Pending |
-| PCI theo ASTM D6433 | Tiêu chuẩn quốc tế, có thể kiểm chứng, phù hợp đồ án | Deduct value curves đã trích xuất từ PPTX chuyên môn |
+| PCI theo ASTM D6433 | Tiêu chuẩn quốc tế, có thể kiểm chứng, phù hợp đồ án | ✅ Validated — Phase 2 complete, 43/43 tests, deduct curves from PPTX |
 | Phase 6 (T3) không block Phase 7 | Train thêm model là điểm cộng, không bắt buộc để bảo vệ đồ án | — Pending |
 | Confidence threshold 0.15 | Benchmark chứng minh optimal 0.10–0.20 cho RDD2022 | — Pending |
-| ONNX Runtime + DirectML | Tận dụng Intel HD 4400, chạy local, không cần PyTorch cho inference | — Pending |
+| Torch CPU inference (DirectML deferred) | DirectML crash (DmlGraphFusionHelper), torch CPU stable | ⚠️ Partial — CPU works, DirectML revisit later |
 
 ## Evolution
 
@@ -118,4 +117,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-21 after Tai_Lieu analysis + PCI data sourced from PPTX*
+*Last updated: 2026-05-21 after Phase 1+2 completion, PROJECT.md requirements validated*
