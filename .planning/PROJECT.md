@@ -45,6 +45,16 @@ Phát hiện hư hỏng mặt đường chính xác + tính PCI chuẩn ASTM D64
 ### Tại sao thay đổi chiến lược
 Tiến trình Colab bị gián đoạn do mất mạng. Chạy lại toàn bộ notebook (đặc biệt XML→YOLO conversion) quá tốn thời gian. Tìm thấy pretrained weights YOLOv12s trên HuggingFace (SreekarAditya/yolo-rdd2022-benchmark) — model #1 trên RDD2022 benchmark, mAP50=0.632, không cần tự train.
 
+### PCI đã sai 3 lần — bài học quan trọng
+Dự án đã trải qua 3 thế hệ (G1-G2-G3) và PCI đã sai 3 lần liên tiếp:
+- **G1:** Công thức exponential decay tự chế → PCI ≈ 0 (655 detections × penalty vượt ngưỡng)
+- **G1-fix:** Frame-normalized exponential decay → PCI ≈ 69 (tốt hơn nhưng KHÔNG theo chuẩn nào)
+- **G2:** Placeholder → PCI = 100 (empty list truyền vào hàm tính)
+
+**Nguyên nhân gốc rễ:** Tự chế công thức thay vì dùng tiêu chuẩn. **Phát hiện quan trọng:** Slide chuyên môn trong Tai_Lieu (Slide 17-22) ĐÃ CÓ SẴN bảng deduct value curves ASTM D6433 từ đầu — chỉ là chưa ai đọc và lấy ra.
+
+**Quyết định:** Phase 2 (PCI Engine) phải hoàn thiện và pass 100% tests TRƯỚC khi chạm vào GUI (Phase 3). Lịch sử chứng minh làm PCI sau thì luôn sai.
+
 ### Kiến trúc 3 tầng (tăng dần độ chính xác)
 
 **T1 — MVP (bbox proxy):**
@@ -85,7 +95,8 @@ Tiến trình Colab bị gián đoạn do mất mạng. Chạy lại toàn bộ 
 |----------|-----------|---------|
 | Dùng pretrained YOLOv12s thay vì tự train YOLO11n-seg | Tránh mất thời gian Colab, model tốt hơn (mAP50 0.632 vs target 0.60) | — Pending |
 | Kiến trúc 3 tầng (bbox→FastSAM→end-to-end) | MVP nhanh, cải tiến dần, không block | — Pending |
-| PCI theo ASTM D6433 | Tiêu chuẩn quốc tế, có thể kiểm chứng, phù hợp đồ án | — Pending |
+| PCI theo ASTM D6433 | Tiêu chuẩn quốc tế, có thể kiểm chứng, phù hợp đồ án | Deduct value curves đã trích xuất từ PPTX chuyên môn |
+| Phase 6 (T3) không block Phase 7 | Train thêm model là điểm cộng, không bắt buộc để bảo vệ đồ án | — Pending |
 | Confidence threshold 0.15 | Benchmark chứng minh optimal 0.10–0.20 cho RDD2022 | — Pending |
 | ONNX Runtime + DirectML | Tận dụng Intel HD 4400, chạy local, không cần PyTorch cho inference | — Pending |
 
@@ -107,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-21 after strategy pivot to pretrained weights*
+*Last updated: 2026-05-21 after Tai_Lieu analysis + PCI data sourced from PPTX*

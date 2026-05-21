@@ -1,0 +1,9 @@
+{
+  "model_path": "models/yolo-rdd2022-benchmark/yolo12s_seed0_best.pt",
+  "confidence": 0.15,
+  "device": "cpu",
+  "sample_unit_area_sqft": 5000,
+  "pci_data_path": "data/pci_astm_d6433.json",
+  "output_dir": "outputs",
+  "language": "vi"
+}
