@@ -41,12 +41,32 @@ class Detection:
     bbox: tuple[float, float, float, float]  # (x1, y1, x2, y2) pixel coords
     code: str = ""           # ASTM code, e.g. "D00"
     include_in_pci: bool = True
+    mask_pixels: int = 0     # Segmentation mask pixel count (0 = no mask)
+    mask_area_sqft: float = 0.0  # Mask area in sq ft (0 = no mask)
+    mask_contours: list = field(default_factory=list)  # Contour points for GUI rendering
 
     def __post_init__(self) -> None:
         if not self.code:
             self.code = CLASS_CODE_MAP.get(self.class_name, "UNKNOWN")
         if self.class_name.lower() in PCI_EXCLUDED_NAMES:
             self.include_in_pci = False
+
+    @property
+    def has_mask(self) -> bool:
+        """Whether this detection has a segmentation mask."""
+        return self.mask_pixels > 0
+
+    @property
+    def bbox_area_sqft(self) -> float:
+        """Bbox area in sq ft (computed from bbox coords, requires image shape)."""
+        # This is a raw pixel area — conversion to sqft done externally
+        x1, y1, x2, y2 = self.bbox
+        return abs((x2 - x1) * (y2 - y1))  # pixel area
+
+    @property
+    def effective_area_sqft(self) -> float:
+        """Mask area if available, otherwise bbox area (in sq ft)."""
+        return self.mask_area_sqft if self.has_mask else 0.0
 
 
 @dataclass
@@ -57,6 +77,7 @@ class DetectionResult:
     detections: list[Detection] = field(default_factory=list)
     image_shape: tuple[int, int] = (0, 0)  # (height, width)
     inference_time_ms: float = 0.0
+    segmentation_time_ms: float = 0.0
 
     @property
     def pci_detections(self) -> list[Detection]:

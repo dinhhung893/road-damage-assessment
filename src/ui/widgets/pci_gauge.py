@@ -107,16 +107,18 @@ class PCIGauge(QWidget):
 
             # Convert PCI range to degree range
             # PCI 100 = left (180°), PCI 0 = right (0°)
-            start_deg = ARC_START_DEG - (high / 100.0) * ARC_SPAN_DEG
-            span_deg = ((high - low) / 100.0) * ARC_SPAN_DEG
+            # Qt angles: 1/16th degree, start from 3 o'clock (0°), CCW positive
+            # We draw from high→low (CW = negative span)
+            start_deg = 180 - (high / 100.0) * 180
+            span_deg = ((high - low) / 100.0) * 180
 
-            pen = QPen(color, pen_width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+            pen = QPen(color, pen_width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap)
             painter.setPen(pen)
             painter.setBrush(Qt.BrushStyle.NoBrush)
 
             rect = QRectF(cx - radius, cy - radius, 2 * radius, 2 * radius)
-            # Qt angles: 1/16th degree, start from 3 o'clock, CCW positive
-            painter.drawArc(rect, int(start_deg * 16), int(-span_deg * 16))
+            # drawArc: startAngle in 1/16°, spanAngle in 1/16° (positive=CCW, negative=CW)
+            painter.drawArc(rect, int(start_deg * 16), int(span_deg * 16))
 
         # --- Draw tick marks ---
         pen = QPen(QColor(180, 180, 180), 1)

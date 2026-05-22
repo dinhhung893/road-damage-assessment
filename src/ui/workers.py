@@ -6,6 +6,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
 
+from src.ui.strings import get_string
 from src.utils.config import load_config
 from src.utils.logging_setup import get_logger
 
@@ -55,6 +56,21 @@ class DetectionWorker(QThread):
             self.status.emit(f"Detecting: {self.image_path.name}")
             det_result = detector.detect(self.image_path)
 
+            # --- Segmentation (if FastSAM available) ---
+            fastsam_model = config.get("fastsam_model", "models/FastSAM-s.pt")
+            from src.engine.segmenter import RoadDamageSegmenter
+            segmenter = RoadDamageSegmenter(model_path=fastsam_model, device=device)
+
+            if segmenter.is_available and det_result.pci_detections:
+                self.status.emit("Segmenting…")
+                import cv2
+                image = cv2.imread(str(self.image_path))
+                if image is not None:
+                    seg_time = segmenter.segment_detections(
+                        image, det_result.pci_detections, det_result.image_shape
+                    )
+                    det_result.segmentation_time_ms = seg_time
+
             # --- PCI Calculation ---
             if not det_result.pci_detections:
                 # No PCI-relevant detections — return detection result with None PCI
@@ -82,6 +98,8 @@ class DetectionWorker(QThread):
                     "code": det.code,
                     "bbox": (x1, y1, x2, y2),
                     "confidence": det.confidence,
+                    "has_mask": det.has_mask,
+                    "mask_area_sqft": det.mask_area_sqft,
                 })
 
             pci_result = pci_engine.calculate_pci(
@@ -140,6 +158,11 @@ class BatchDetectionWorker(QThread):
             )
             pci_engine = PCIEngine(pci_data_path=pci_data_path)
 
+            # Initialize segmenter (if available)
+            fastsam_model = config.get("fastsam_model", "models/FastSAM-s.pt")
+            from src.engine.segmenter import RoadDamageSegmenter
+            segmenter = RoadDamageSegmenter(model_path=fastsam_model, device=device)
+
             total = len(self.image_paths)
             results = []
 
@@ -152,6 +175,16 @@ class BatchDetectionWorker(QThread):
                 try:
                     det_result = detector.detect(img_path)
 
+                    # Segmentation step
+                    if segmenter.is_available and det_result.pci_detections:
+                        import cv2
+                        image = cv2.imread(str(img_path))
+                        if image is not None:
+                            seg_time = segmenter.segment_detections(
+                                image, det_result.pci_detections, det_result.image_shape
+                            )
+                            det_result.segmentation_time_ms = seg_time
+
                     pci_result = None
                     if det_result.pci_detections:
                         damage_input = []
@@ -161,6 +194,8 @@ class BatchDetectionWorker(QThread):
                                 "code": det.code,
                                 "bbox": (x1, y1, x2, y2),
                                 "confidence": det.confidence,
+                                "has_mask": det.has_mask,
+                                "mask_area_sqft": det.mask_area_sqft,
                             })
 
                         img_h, img_w = det_result.image_shape

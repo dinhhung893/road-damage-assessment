@@ -6,12 +6,11 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QMainWindow,
     QToolBar,
-    QStatusBar,
     QSplitter,
     QVBoxLayout,
     QHBoxLayout,
@@ -19,6 +18,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QProgressBar,
     QMessageBox,
+    QLabel,
 )
 
 from qfluentwidgets import (
@@ -61,15 +61,18 @@ class MainWindow(QMainWindow):
         self._worker: DetectionWorker | BatchDetectionWorker | None = None
         self._is_dark_theme = self._config.get("theme", "dark") == "dark"
 
+        # Batch results state
+        self._batch_results: list[tuple] = []  # [(path, pci_result, det_result), ...]
+        self._batch_index: int = -1
+
         # --- Window setup ---
         self.setWindowTitle(get_string("app_title"))
         self.setMinimumSize(1200, 700)
         self.resize(1400, 800)
 
         # --- Build UI ---
-        self._build_toolbar()
+        self._create_actions()
         self._build_central()
-        self._build_status_bar()
         self._build_menu_bar()
 
         # --- Apply theme ---
@@ -82,62 +85,51 @@ class MainWindow(QMainWindow):
     # UI Construction
     # =====================================================================
 
-    def _build_toolbar(self) -> None:
-        """Build the main toolbar with action buttons."""
-        toolbar = QToolBar("Main Toolbar")
-        toolbar.setMovable(False)
-        toolbar.setIconSize(QSize(20, 20))
-        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
-        self.addToolBar(toolbar)
-
+    def _create_actions(self) -> None:
+        """Create all QActions (used by menu bar, no toolbar)."""
         # Open Image
-        self._action_open = QAction(FluentIcon.PHOTO.icon(), get_string("tb_open_image"), self)
+        self._action_open = QAction(FluentIcon.PHOTO.icon(), get_string("action_open_image"), self)
         self._action_open.triggered.connect(self._on_open_image)
-        toolbar.addAction(self._action_open)
 
         # Open Folder
-        self._action_folder = QAction(FluentIcon.FOLDER.icon(), get_string("tb_open_folder"), self)
+        self._action_folder = QAction(FluentIcon.FOLDER.icon(), get_string("action_open_folder"), self)
         self._action_folder.triggered.connect(self._on_open_folder)
-        toolbar.addAction(self._action_folder)
-
-        toolbar.addSeparator()
 
         # Run Detection
-        self._action_run = QAction(FluentIcon.PLAY.icon(), get_string("tb_run"), self)
+        self._action_run = QAction(FluentIcon.PLAY.icon(), get_string("action_run_detection"), self)
         self._action_run.triggered.connect(self._on_run_detection)
         self._action_run.setEnabled(False)  # disabled until image loaded
-        toolbar.addAction(self._action_run)
-
-        toolbar.addSeparator()
 
         # Save Annotated Image
-        self._action_save = QAction(FluentIcon.SAVE.icon(), get_string("tb_save"), self)
+        self._action_save = QAction(FluentIcon.SAVE.icon(), get_string("action_save_image"), self)
         self._action_save.triggered.connect(self._on_save_image)
         self._action_save.setEnabled(False)
-        toolbar.addAction(self._action_save)
 
         # Export CSV
-        self._action_export = QAction(FluentIcon.DOCUMENT.icon(), get_string("tb_export"), self)
+        self._action_export = QAction(FluentIcon.DOCUMENT.icon(), get_string("action_export_report"), self)
         self._action_export.triggered.connect(self._on_export_csv)
         self._action_export.setEnabled(False)
-        toolbar.addAction(self._action_export)
-
-        toolbar.addSeparator()
 
         # Theme Toggle
-        self._action_theme = QAction(FluentIcon.BRIGHTNESS.icon(), get_string("tb_theme"), self)
+        self._action_theme = QAction(FluentIcon.BRIGHTNESS.icon(), get_string("action_theme_toggle"), self)
         self._action_theme.triggered.connect(self._on_toggle_theme)
-        toolbar.addAction(self._action_theme)
 
         # Settings
-        self._action_settings = QAction(FluentIcon.SETTING.icon(), get_string("tb_settings"), self)  # noqa: already correct
+        self._action_settings = QAction(FluentIcon.SETTING.icon(), get_string("action_settings"), self)
         self._action_settings.triggered.connect(self._on_settings)
-        toolbar.addAction(self._action_settings)
 
         # Open Output Folder
         self._action_output = QAction(FluentIcon.FOLDER_ADD.icon(), get_string("action_open_output"), self)
         self._action_output.triggered.connect(self._on_open_output_folder)
-        toolbar.addAction(self._action_output)
+
+        # Batch navigation
+        self._action_prev = QAction(FluentIcon.LEFT_ARROW.icon(), get_string("action_prev_image"), self)
+        self._action_prev.triggered.connect(self._on_prev_batch_image)
+        self._action_prev.setEnabled(False)
+
+        self._action_next = QAction(FluentIcon.RIGHT_ARROW.icon(), get_string("action_next_image"), self)
+        self._action_next.triggered.connect(self._on_next_batch_image)
+        self._action_next.setEnabled(False)
 
     def _build_central(self) -> None:
         """Build the central widget with splitter layout."""
@@ -146,12 +138,40 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(central)
         layout.setContentsMargins(4, 4, 4, 4)
 
-        # Splitter: Image Viewer (left) | PCI Panel (right)
+        # Splitter: Image Viewer Area (left) | PCI Panel (right)
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # --- Image Viewer ---
+        # --- Image Viewer Area (viewer + nav + log) ---
+        viewer_area = QWidget()
+        viewer_layout = QVBoxLayout(viewer_area)
+        viewer_layout.setContentsMargins(0, 0, 0, 0)
+        viewer_layout.setSpacing(2)
+
+        # Batch navigation bar (hidden by default, above image)
+        self._batch_nav = QToolBar()
+        self._batch_nav.setMovable(False)
+        self._batch_nav.setVisible(False)
+        self._batch_nav.addAction(self._action_prev)
+        self._batch_nav.addAction(self._action_next)
+        self._batch_nav.addSeparator()
+        self._batch_counter = QLabel("")
+        self._batch_nav.addWidget(self._batch_counter)
+        viewer_layout.addWidget(self._batch_nav)
+
+        # Image Viewer
         self._image_viewer = ImageViewer()
-        splitter.addWidget(self._image_viewer)
+        viewer_layout.addWidget(self._image_viewer, stretch=1)
+
+        # Batch progress bar (hidden by default)
+        self._batch_progress = QProgressBar()
+        self._batch_progress.setVisible(False)
+        viewer_layout.addWidget(self._batch_progress)
+
+        # Log panel (below image)
+        self._build_log_panel()
+        viewer_layout.addWidget(self._log_panel)
+
+        splitter.addWidget(viewer_area)
 
         # --- PCI Panel ---
         pci_panel = QWidget()
@@ -167,11 +187,6 @@ class MainWindow(QMainWindow):
         self._damage_table = DamageTable()
         pci_layout.addWidget(self._damage_table, stretch=1)
 
-        # Batch progress bar (hidden by default)
-        self._batch_progress = QProgressBar()
-        self._batch_progress.setVisible(False)
-        pci_layout.addWidget(self._batch_progress)
-
         pci_panel.setMinimumWidth(250)
         splitter.addWidget(pci_panel)
 
@@ -181,14 +196,14 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(splitter)
 
-    def _build_status_bar(self) -> None:
-        """Build the status bar."""
-        self._status_bar = QStatusBar()
-        self.setStatusBar(self._status_bar)
-        self._status_bar.showMessage(get_string("status_ready"))
+    def _build_log_panel(self) -> None:
+        """Build the log panel — replaces thin status bar with larger colored log."""
+        from src.ui.widgets.log_panel import LogPanel
+        self._log_panel = LogPanel(is_dark=self._is_dark_theme)
+        self._log_panel.log(get_string("status_ready"), "info")
 
     def _build_menu_bar(self) -> None:
-        """Build the menu bar with minimal menus."""
+        """Build the menu bar with all actions."""
         menubar = self.menuBar()
 
         # File menu
@@ -198,6 +213,7 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(self._action_save)
         file_menu.addAction(self._action_export)
+        file_menu.addAction(self._action_output)
         file_menu.addSeparator()
 
         exit_action = QAction(get_string("action_exit"), self)
@@ -211,6 +227,7 @@ class MainWindow(QMainWindow):
         # View menu
         view_menu = menubar.addMenu(get_string("menu_view"))
         view_menu.addAction(self._action_theme)
+        view_menu.addAction(self._action_settings)
 
         # Help menu
         help_menu = menubar.addMenu(get_string("menu_help"))
@@ -228,6 +245,8 @@ class MainWindow(QMainWindow):
             setTheme(Theme.DARK)
         else:
             setTheme(Theme.LIGHT)
+        if hasattr(self, "_log_panel"):
+            self._log_panel.set_dark_theme(self._is_dark_theme)
 
     def _on_toggle_theme(self) -> None:
         """Toggle between dark and light theme."""
@@ -265,8 +284,8 @@ class MainWindow(QMainWindow):
         if self._image_viewer.load_image(path):
             self._current_image_path = path
             self._action_run.setEnabled(True)
-            self._status_bar.showMessage(
-                get_string("msg_image_loaded", name=Path(path).name)
+            self._log_panel.log(
+                get_string("msg_image_loaded", name=Path(path).name), "info"
             )
             # Reset PCI panel
             self._pci_gauge.reset()
@@ -293,12 +312,12 @@ class MainWindow(QMainWindow):
         self._action_run.setEnabled(False)
         self._action_open.setEnabled(False)
         self._action_folder.setEnabled(False)
-        self._status_bar.showMessage(get_string("status_detecting"))
+        self._log_panel.log(get_string("status_detecting"), "info")
 
         self._worker = DetectionWorker(image_path)
         self._worker.finished.connect(self._on_detection_finished)
         self._worker.error.connect(self._on_detection_error)
-        self._worker.status.connect(lambda msg: self._status_bar.showMessage(msg))
+        self._worker.status.connect(lambda msg: self._log_panel.log(msg, "info"))
         self._worker.start()
 
     def _on_detection_finished(self, pci_result, det_result) -> None:
@@ -309,13 +328,23 @@ class MainWindow(QMainWindow):
         # Update image viewer with annotations
         if det_result and det_result.detections:
             detections = []
+            masks = []
             for det in det_result.detections:
                 detections.append({
                     "code": det.code,
                     "bbox": det.bbox,
                     "confidence": det.confidence,
                 })
+                # Add mask contours if available
+                if det.has_mask and det.mask_contours:
+                    for contour in det.mask_contours:
+                        masks.append({
+                            "code": det.code,
+                            "contour": contour,
+                        })
             self._image_viewer.add_detections(detections)
+            if masks:
+                self._image_viewer.add_masks(masks)
 
         # Update PCI gauge
         if pci_result:
@@ -325,12 +354,17 @@ class MainWindow(QMainWindow):
             self._pci_gauge.reset()
             self._damage_table.reset()
 
-        # Update status bar
+        # Update log panel
         n_det = len(det_result.detections) if det_result else 0
-        pci_val = pci_result.pci_value if pci_result else 0
-        self._status_bar.showMessage(
-            get_string("status_done", n=n_det, pci=f"{pci_val:.1f}")
-        )
+        if pci_result:
+            pci_val = pci_result.pci_value
+            self._log_panel.log(
+                get_string("status_done", n=n_det, pci=f"{pci_val:.1f}"), "success"
+            )
+        else:
+            self._log_panel.log(
+                get_string("status_done", n=n_det, pci="100.0"), "success"
+            )
 
         # Enable actions
         self._action_run.setEnabled(True)
@@ -357,7 +391,7 @@ class MainWindow(QMainWindow):
         self._action_run.setEnabled(True)
         self._action_open.setEnabled(True)
         self._action_folder.setEnabled(True)
-        self._status_bar.showMessage(get_string("status_error", msg=msg))
+        self._log_panel.log(get_string("status_error", msg=msg), "error")
 
     # =====================================================================
     # Batch Processing
@@ -386,8 +420,8 @@ class MainWindow(QMainWindow):
         self._batch_progress.setRange(0, len(image_paths))
         self._batch_progress.setValue(0)
 
-        self._status_bar.showMessage(
-            get_string("msg_batch_start", n=len(image_paths))
+        self._log_panel.log(
+            get_string("msg_batch_start", n=len(image_paths)), "info"
         )
 
         self._worker = BatchDetectionWorker(image_paths)
@@ -400,43 +434,113 @@ class MainWindow(QMainWindow):
     def _on_batch_progress(self, current: int, total: int, name: str) -> None:
         """Update progress bar during batch processing."""
         self._batch_progress.setValue(current)
+        self._log_panel.log(
+            get_string("msg_batch_progress", i=current, n=total, name=name), "info"
+        )
 
     def _on_batch_image_finished(self, path: str, pci_result, det_result) -> None:
-        """Handle single image completion during batch."""
-        # Load first image with annotations into viewer
-        if not self._current_image_path and det_result:
-            self._load_image(path)
-            if det_result.detections:
-                detections = [
-                    {"code": d.code, "bbox": d.bbox, "confidence": d.confidence}
-                    for d in det_result.detections
-                ]
-                self._image_viewer.add_detections(detections)
-            if pci_result:
-                self._pci_gauge.set_pci_value(pci_result.pci_value, pci_result.rating)
-                self._damage_table.update_from_pci_result(pci_result)
+        """Handle single image completion during batch — log result."""
+        if pci_result:
+            self._log_panel.log(
+                f"  → PCI = {pci_result.pci_value:.1f} ({pci_result.rating})", "success"
+            )
+        else:
+            n_det = len(det_result.detections) if det_result else 0
+            if n_det == 0:
+                self._log_panel.log("  → Không phát hiện hư hỏng — PCI = 100.0 (Tốt)", "info")
+            else:
+                self._log_panel.log(f"  → {n_det} phát hiện (không tính PCI)", "warning")
 
     def _on_batch_finished(self, results: list) -> None:
-        """Handle batch processing completion — show section PCI."""
+        """Handle batch processing completion — store results, show first image, enable navigation."""
         self._batch_progress.setVisible(False)
+        self._batch_results = results
+        self._batch_index = -1
+
+        # Calculate section PCI using PCIEngine
+        pci_results = [r[1] for r in results if r[1] is not None]
+        if pci_results:
+            from src.engine.pci import PCIEngine
+            pci_engine = PCIEngine(pci_data_path=self._config.get("pci_data_path", "data/pci_astm_d6433.json"))
+            section = pci_engine.calculate_section_pci(pci_results)
+            section_pci = section["section_pci"]
+            section_rating = section["rating"]
+            self._log_panel.log(
+                f"{get_string('msg_batch_done', n=len(results))} "
+                f"— {get_string('batch_section_pci')}: {section_pci:.1f} ({section_rating})",
+                "success",
+            )
+        else:
+            self._log_panel.log(
+                get_string("msg_batch_done", n=len(results)), "warning"
+            )
+
+        # Show navigation bar
+        if len(results) > 1:
+            self._batch_nav.setVisible(True)
+
+        # Show first image with detections (or first image overall)
+        first_det_idx = next((i for i, r in enumerate(results) if r[1] is not None), 0)
+        self._show_batch_image(first_det_idx)
+
+        # Enable actions
         self._action_run.setEnabled(True)
         self._action_open.setEnabled(True)
         self._action_folder.setEnabled(True)
-
-        # Calculate section PCI (average)
-        pci_values = [r[1].pci_value for r in results if r[1] is not None]
-        if pci_values:
-            section_pci = sum(pci_values) / len(pci_values)
-            self._status_bar.showMessage(
-                f"{get_string('msg_batch_done', n=len(results))} "
-                f"— {get_string('batch_section_pci')}: {section_pci:.1f}"
-            )
-        else:
-            self._status_bar.showMessage(
-                get_string("msg_batch_done", n=len(results))
-            )
-
         self._action_export.setEnabled(any(r[1] is not None for r in results))
+
+    def _show_batch_image(self, index: int) -> None:
+        """Display a specific batch result by index."""
+        if not self._batch_results or index < 0 or index >= len(self._batch_results):
+            return
+
+        self._batch_index = index
+        path, pci_result, det_result = self._batch_results[index]
+
+        # Load image
+        self._image_viewer.load_image(path)
+        self._current_image_path = path
+
+        # Show annotations
+        if det_result and det_result.detections:
+            detections = []
+            masks = []
+            for d in det_result.detections:
+                detections.append({"code": d.code, "bbox": d.bbox, "confidence": d.confidence})
+                if d.has_mask and d.mask_contours:
+                    for contour in d.mask_contours:
+                        masks.append({"code": d.code, "contour": contour})
+            self._image_viewer.add_detections(detections)
+            if masks:
+                self._image_viewer.add_masks(masks)
+
+        # Update PCI panel
+        if pci_result:
+            self._pci_gauge.set_pci_value(pci_result.pci_value, pci_result.rating)
+            self._damage_table.update_from_pci_result(pci_result)
+            self._current_pci_result = pci_result
+            self._current_det_result = det_result
+        else:
+            self._pci_gauge.set_pci_value(100.0, "Good")
+            self._damage_table.reset()
+            self._current_pci_result = None
+            self._current_det_result = det_result
+
+        # Update navigation state
+        total = len(self._batch_results)
+        self._action_prev.setEnabled(index > 0)
+        self._action_next.setEnabled(index < total - 1)
+        self._batch_counter.setText(f" {index + 1}/{total} ")
+
+    def _on_prev_batch_image(self) -> None:
+        """Navigate to previous batch result."""
+        if self._batch_index > 0:
+            self._show_batch_image(self._batch_index - 1)
+
+    def _on_next_batch_image(self) -> None:
+        """Navigate to next batch result."""
+        if self._batch_index < len(self._batch_results) - 1:
+            self._show_batch_image(self._batch_index + 1)
 
     # =====================================================================
     # Save / Export
@@ -462,7 +566,7 @@ class MainWindow(QMainWindow):
         if path:
             pixmap = self._image_viewer.grab()
             if pixmap.save(path):
-                self._status_bar.showMessage(get_string("msg_save_success", path=path))
+                self._log_panel.log(get_string("msg_save_success", path=path), "success")
             else:
                 self._show_error("Failed to save image")
 
@@ -528,7 +632,7 @@ class MainWindow(QMainWindow):
                             f"{getattr(dmg, 'confidence', 0):.0%}",
                         ])
 
-            self._status_bar.showMessage(get_string("msg_export_success", path=path))
+            self._log_panel.log(get_string("msg_export_success", path=path), "success")
 
         except Exception as e:
             self._show_error(f"Export failed: {e}")
@@ -609,3 +713,13 @@ class MainWindow(QMainWindow):
             self._worker.quit()
             self._worker.wait(3000)
         event.accept()
+
+    def keyPressEvent(self, event) -> None:
+        """Handle keyboard shortcuts."""
+        key = event.key()
+        if key == Qt.Key.Key_Left and self._batch_index > 0:
+            self._on_prev_batch_image()
+        elif key == Qt.Key.Key_Right and self._batch_index < len(self._batch_results) - 1:
+            self._on_next_batch_image()
+        else:
+            super().keyPressEvent(event)

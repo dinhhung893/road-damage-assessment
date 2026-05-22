@@ -1,10 +1,13 @@
-"""Auto-download YOLOv12s pretrained weights from HuggingFace.
+"""Auto-download pretrained model weights from HuggingFace.
 
-Downloads yolo12s_seed0_best.pt from SreekarAditya/yolo-rdd2022-benchmark
-and verifies model classes.
+Downloads:
+- YOLOv12s detection weights from SreekarAditya/yolo-rdd2022-benchmark
+- FastSAM-s segmentation weights from Uminosachi/FastSAM
+- FastSAM-x segmentation weights from Uminosatchi/FastSAM (optional)
 
 Usage:
-    python scripts/download_model.py
+    python scripts/download_model.py          # download all
+    python scripts/download_model.py --fastsam-only  # FastSAM only
 """
 
 from __future__ import annotations
@@ -88,6 +91,70 @@ def verify_model(pt_path: Path) -> dict:
     return info
 
 
+# --- FastSAM checkpoints ---
+
+FASTSAM_REPOS = {
+    "FastSAM-s.pt": "Uminosachi/FastSAM",
+    "FastSAM-x.pt": "Uminosachi/FastSAM",
+}
+
+
+def download_fastsam(variant: str = "both") -> list[Path]:
+    """Download FastSAM checkpoint(s) from HuggingFace.
+
+    Args:
+        variant: "s", "x", or "both"
+
+    Returns:
+        List of downloaded file paths.
+    """
+    targets = []
+    if variant in ("s", "both"):
+        targets.append("FastSAM-s.pt")
+    if variant in ("x", "both"):
+        targets.append("FastSAM-x.pt")
+
+    downloaded = []
+    for filename in targets:
+        repo_id = FASTSAM_REPOS[filename]
+        local_path = _PROJECT_ROOT / "models" / filename
+        if local_path.exists():
+            print(f"Already exists: {local_path}")
+            downloaded.append(local_path)
+            continue
+
+        print(f"Downloading {filename} from {repo_id}...")
+        pt_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            local_dir=str(_PROJECT_ROOT / "models"),
+        )
+        print(f"Downloaded: {pt_path}")
+        downloaded.append(Path(pt_path))
+
+    return downloaded
+
+
+def verify_fastsam(pt_path: Path) -> dict:
+    """Verify FastSAM model loads. Returns model info dict."""
+    from ultralytics import FastSAM
+
+    model = FastSAM(str(pt_path))
+    info = {
+        "path": str(pt_path),
+        "task": model.task,
+    }
+    print(f"  FastSAM verification: {info}")
+    return info
+
+
 if __name__ == "__main__":
-    pt_path = download_model()
-    verify_model(pt_path)
+    fastsam_only = "--fastsam-only" in sys.argv
+
+    if not fastsam_only:
+        pt_path = download_model()
+        verify_model(pt_path)
+
+    paths = download_fastsam()
+    for p in paths:
+        verify_fastsam(p)

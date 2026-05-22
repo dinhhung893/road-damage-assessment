@@ -23,6 +23,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "action_open_output": "Mở thư mục kết quả",
         "action_exit": "Thoát",
         "action_about": "Giới thiệu",
+        "action_prev_image": "Ảnh trước",
+        "action_next_image": "Ảnh sau",
 
         # --- Toolbar ---
         "tb_open_image": "Mở ảnh",
@@ -134,6 +136,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "action_open_output": "Open Output Folder",
         "action_exit": "Exit",
         "action_about": "About",
+        "action_prev_image": "Previous Image",
+        "action_next_image": "Next Image",
 
         # --- Toolbar ---
         "tb_open_image": "Open",

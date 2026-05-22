@@ -291,16 +291,19 @@ class PCIEngine:
         bbox_area_px: float,
         image_area_px: float,
         correction_factor: float = 1.0,
+        mask_area_ratio: float = 0.0,
     ) -> float:
         """Calculate damage density as percentage of sample unit.
 
-        Maps pixel-space bbox area to sample unit area (sq ft),
-        applies bbox overestimate correction, then computes density.
+        When mask_area_ratio > 0 (from segmentation), uses mask area directly
+        (no bbox correction needed — mask is precise). Otherwise uses bbox area
+        with overestimate correction.
 
         Args:
             bbox_area_px: Bounding box area in pixels.
             image_area_px: Total image area in pixels.
             correction_factor: Factor to correct bbox overestimate (0–1).
+            mask_area_ratio: Mask area as fraction of image (from segmenter).
 
         Returns:
             Density as percentage (0–100+).
@@ -308,15 +311,14 @@ class PCIEngine:
         if image_area_px <= 0:
             return 0.0
 
-        # Proportion of image covered by bbox
-        proportion = bbox_area_px / image_area_px
-
-        # Apply bbox overestimate correction
-        proportion *= correction_factor
-
-        # Map to sample unit area
-        # Assume image represents the entire sample unit
-        density_pct = proportion * 100.0
+        if mask_area_ratio > 0:
+            # Mask area is precise — no correction needed
+            density_pct = mask_area_ratio * 100.0
+        else:
+            # Bbox proxy — apply overestimate correction
+            proportion = bbox_area_px / image_area_px
+            proportion *= correction_factor
+            density_pct = proportion * 100.0
 
         return density_pct
 
@@ -366,18 +368,26 @@ class PCIEngine:
             code = det.get("code", "UNKNOWN")
             bbox = det.get("bbox", (0, 0, 0, 0))
             confidence = det.get("confidence", 0.0)
+            mask_area_ratio = det.get("mask_area_sqft", 0.0)  # Fraction of image from segmenter
+            has_mask = det.get("has_mask", False)
 
             # Calculate bbox area
             x1, y1, x2, y2 = bbox
             bbox_area_px = max(0, (x2 - x1) * (y2 - y1))
 
-            # Apply correction factor
-            correction = BBOX_CORRECTION_FACTORS.get(code, 1.0) if apply_bbox_correction else 1.0
-            corrected_area_px = bbox_area_px * correction
+            # Apply correction factor only when no mask
+            if has_mask and mask_area_ratio > 0:
+                correction = 1.0  # Mask is precise, no correction
+                corrected_area_px = bbox_area_px  # Not used for density
+            else:
+                correction = BBOX_CORRECTION_FACTORS.get(code, 1.0) if apply_bbox_correction else 1.0
+                corrected_area_px = bbox_area_px * correction
 
             # Calculate density
             density_pct = self.calculate_density(
-                corrected_area_px, image_area_px, correction_factor=1.0  # Already applied
+                corrected_area_px, image_area_px,
+                correction_factor=1.0,  # Already applied above
+                mask_area_ratio=mask_area_ratio if has_mask else 0.0,
             )
 
             # Assign severity
@@ -386,20 +396,27 @@ class PCIEngine:
             # Look up deduct value
             deduct_value = self.lookup_deduct_value(code, severity, density_pct)
 
+            # Compute area in sqft
+            if has_mask and mask_area_ratio > 0:
+                area_sqft = round(mask_area_ratio * self.sample_unit_area_sqft, 2)
+            else:
+                area_sqft = round(corrected_area_px / image_area_px * self.sample_unit_area_sqft, 2)
+
             record = DamageRecord(
                 code=code,
                 severity=severity,
                 density_pct=round(density_pct, 4),
                 deduct_value=round(deduct_value, 2),
                 bbox_area_sqft=round(bbox_area_px / image_area_px * self.sample_unit_area_sqft, 2),
-                corrected_area_sqft=round(corrected_area_px / image_area_px * self.sample_unit_area_sqft, 2),
+                corrected_area_sqft=area_sqft,
                 confidence=confidence,
             )
             damage_records.append(record)
+            source = "mask" if (has_mask and mask_area_ratio > 0) else "bbox"
             logger.debug(
                 f"  {code} {severity}: density={density_pct:.2f}%, "
-                f"dv={deduct_value:.1f}, bbox_px={bbox_area_px:.0f}, "
-                f"corrected_px={corrected_area_px:.0f}"
+                f"dv={deduct_value:.1f}, source={source}, "
+                f"bbox_px={bbox_area_px:.0f}"
             )
 
         # Calculate CDV

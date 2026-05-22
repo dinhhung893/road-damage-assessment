@@ -4,14 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QRectF
-from PySide6.QtGui import QPixmap, QWheelEvent, QPen, QBrush, QColor, QFont, QPainter
+from PySide6.QtCore import Qt, QRectF, QPointF
+from PySide6.QtGui import QPixmap, QWheelEvent, QPen, QBrush, QColor, QFont, QPainter, QPolygonF
 from PySide6.QtWidgets import (
     QGraphicsView,
     QGraphicsScene,
     QGraphicsPixmapItem,
     QGraphicsRectItem,
     QGraphicsSimpleTextItem,
+    QGraphicsPolygonItem,
 )
 
 from src.ui.strings import get_string, get_damage_type_name
@@ -148,6 +149,37 @@ class ImageViewer(QGraphicsView):
             text_item.setPos(x1 + LABEL_PADDING, text_y)
             self._scene.addItem(text_item)
             self._annotation_items.append(text_item)
+
+    def add_masks(
+        self,
+        masks: list[dict],
+    ) -> None:
+        """Draw semi-transparent mask overlays on the image.
+
+        Args:
+            masks: List of dicts with keys:
+                - code: ASTM damage code (D00, D10, D20, D40)
+                - contour: list of (x, y) points defining the mask polygon
+        """
+        MASK_OPACITY = 100  # 0-255 alpha (semi-transparent)
+
+        for mask_data in masks:
+            code = mask_data.get("code", "UNKNOWN")
+            contour = mask_data.get("contour", [])
+
+            if len(contour) < 3:
+                continue  # Need at least 3 points for a polygon
+
+            color = DAMAGE_COLORS.get(code, DEFAULT_COLOR)
+            fill_color = QColor(color.red(), color.green(), color.blue(), MASK_OPACITY)
+
+            # Build polygon from contour points
+            polygon = QPolygonF([QPointF(x, y) for x, y in contour])
+            poly_item = QGraphicsPolygonItem(polygon)
+            poly_item.setPen(QPen(Qt.PenStyle.NoPen))
+            poly_item.setBrush(QBrush(fill_color))
+            self._scene.addItem(poly_item)
+            self._annotation_items.append(poly_item)
 
     def clear_annotations(self) -> None:
         """Remove annotation items from the scene, keep the image."""

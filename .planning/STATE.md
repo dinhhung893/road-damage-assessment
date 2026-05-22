@@ -1,12 +1,13 @@
 # STATE.md — Project Memory
 
 ## Current State
-- **Date:** 2026-05-21
-- **Phase:** Phase 3 — Desktop App Core (GUI)
+- **Date:** 2026-05-23
+- **Phase:** Phase 4 — FastSAM Segmentation Integration (T2)
 - **Milestone:** V1.0 — MVP Detection + PCI (T1)
-- **Next:** Plan & Execute Phase 3
+- **Next:** Plan & Execute Phase 4
 - **Phase 1 Status:** ✅ COMPLETE
 - **Phase 2 Status:** ✅ COMPLETE (52/52 tests pass)
+- **Phase 3 Status:** ✅ COMPLETE (pending audit) — GUI built, 3 UAT rounds done, bugs fixed but uncommitted
 
 ## Key Decisions
 1. **Detection:** YOLOv12s pretrained (yolo12s_seed0_best.pt) — mAP50=0.632, #1 on RDD2022 benchmark
@@ -66,11 +67,13 @@ Dataset:    RDD2022 (47,420 images) — pretrained, không cần tải về loca
 - **Phase 7a+7b:** 4 tuần (2+2), fit vào đồ án tốt nghiệp
 
 ## Session Continuity
-- Last action: Phase 2 COMPLETE — PCI Engine (ASTM D6433), 43/43 tests, end-to-end verified
-- Ready to: Plan & Execute Phase 3 (Desktop App Core — GUI)
+- Last action: Phase 4 context gathered — FastSAM segmentation decisions D-16 through D-23
+- Ready to: Plan Phase 4 (FastSAM Segmentation)
 - Key insight: PCI đã sai 3 lần liên tiếp (G1-G2) do tự chế công thức. Phase 2 dùng chuẩn ASTM D6433 chính thức → 52/52 tests pass.
 - Phase 1 artifacts: src/engine/detector.py, src/utils/config.py, src/utils/logging_setup.py, config/default.json, scripts/download_model.py, tests/test_detector.py
 - Phase 2 artifacts: src/engine/pci.py, tests/test_pci.py, scripts/benchmark.py, scripts/download_real_samples.py
+- Phase 3 artifacts: src/ui/main_window.py, src/ui/widgets/pci_gauge.py, src/ui/widgets/log_panel.py, src/ui/workers.py, src/ui/strings.py, src/ui/settings_dialog.py, app.py
 - DirectML deferred: DmlGraphFusionHelper crash with YOLOv12 ONNX — revisit with newer onnxruntime or different model format
 - Model classes: longitudinal_crack(D00), transverse_crack(D10), alligator_crack(D20), pothole(D40)
 - PCI data: data/pci_astm_d6433.json — deduct curves verified against PPTX slides, needs official ASTM verification before thesis
+- Uncommitted: Phase 3 UAT fixes (5 modified + 1 new file) — commit during audit pass

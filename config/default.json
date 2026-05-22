@@ -6,5 +6,8 @@
   "pci_data_path": "data/pci_astm_d6433.json",
   "output_dir": "outputs",
   "language": "vi",
-  "theme": "dark"
+  "theme": "light",
+  "fastsam_model": "models/FastSAM-s.pt",
+  "fastsam_model_x": "models/FastSAM-x.pt",
+  "fastsam_variant": "s"
 }

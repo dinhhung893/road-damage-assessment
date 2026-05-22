@@ -66,7 +66,7 @@
 ---
 
 ### Phase 3: Desktop App Core (GUI)
-**Status:** next
+**Status:** ✅ complete (pending audit)
 **Goal:** Xây dựng giao diện PySide6 Fluent Design, tích hợp detection + PCI
 **Requirements:** VIS-01, VIS-02, VIS-03, GUI-01, GUI-02, GUI-03, GUI-04, GUI-05, GUI-06, GUI-11, GUI-12, GUI-13, GUI-14, INF-06
 **Depends on:** Phase 2 (CHỈ bắt đầu khi Phase 2 pass 100% tests)
@@ -93,7 +93,7 @@
 ---
 
 ### Phase 4: FastSAM Segmentation Integration (T2)
-**Status:** pending
+**Status:** 🔄 in progress
 **Goal:** Thêm FastSAM cho segmentation chính xác, nâng cấp PCI từ bbox→mask
 **Requirements:** SEG-01, SEG-02, SEG-03, SEG-04, SEG-05
 **Depends on:** Phase 3
