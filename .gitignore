@@ -63,3 +63,6 @@ AGENTS.md
 # Internal handoff files
 .continue-here.md
 CLAUDE.md
+
+# Workspace session files
+*.code-workspace
