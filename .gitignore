@@ -33,3 +33,33 @@ runs/
 
 # Pytest
 .pytest_cache/
+
+# Internal planning (GSD framework)
+.planning/
+
+# GitNexus index data
+.gitnexus/
+.gitnexusignore
+
+# IDE agent configs
+.claude/
+.windsurf/
+
+# Thesis reference materials (copyrighted)
+Tai_Lieu/
+
+# YOLO training runs
+runs/
+
+# App output logs
+outputs/
+
+# Personal screenshots
+data/screenshots/
+
+# Auto-generated AGENTS.md (GitNexus)
+AGENTS.md
+
+# Internal handoff files
+.continue-here.md
+CLAUDE.md

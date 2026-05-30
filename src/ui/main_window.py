@@ -344,7 +344,11 @@ class MainWindow(QMainWindow):
                         })
             self._image_viewer.add_detections(detections)
             if masks:
+                logger.info(f"Adding {len(masks)} mask overlays to image viewer")
                 self._image_viewer.add_masks(masks)
+            else:
+                n_with_mask = sum(1 for d in det_result.detections if d.has_mask)
+                logger.info(f"No mask overlays — {n_with_mask}/{len(det_result.detections)} detections have masks")
 
         # Update PCI gauge
         if pci_result:

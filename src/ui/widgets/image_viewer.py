@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QGraphicsRectItem,
     QGraphicsSimpleTextItem,
     QGraphicsPolygonItem,
+    QGraphicsTextItem,
 )
 
 from src.ui.strings import get_string, get_damage_type_name
@@ -161,8 +162,6 @@ class ImageViewer(QGraphicsView):
                 - code: ASTM damage code (D00, D10, D20, D40)
                 - contour: list of (x, y) points defining the mask polygon
         """
-        MASK_OPACITY = 100  # 0-255 alpha (semi-transparent)
-
         for mask_data in masks:
             code = mask_data.get("code", "UNKNOWN")
             contour = mask_data.get("contour", [])
@@ -171,15 +170,31 @@ class ImageViewer(QGraphicsView):
                 continue  # Need at least 3 points for a polygon
 
             color = DAMAGE_COLORS.get(code, DEFAULT_COLOR)
-            fill_color = QColor(color.red(), color.green(), color.blue(), MASK_OPACITY)
 
             # Build polygon from contour points
             polygon = QPolygonF([QPointF(x, y) for x, y in contour])
             poly_item = QGraphicsPolygonItem(polygon)
-            poly_item.setPen(QPen(Qt.PenStyle.NoPen))
+
+            # Semi-transparent fill — use setOpacity for reliable alpha in QGraphicsView
+            fill_color = QColor(color.red(), color.green(), color.blue(), 180)
             poly_item.setBrush(QBrush(fill_color))
+            poly_item.setPen(QPen(color, 2.5))  # Thick outline for visibility
+            poly_item.setOpacity(0.55)  # 55% visible — reliable cross-platform alpha
+            poly_item.setZValue(1)  # Above image, below bbox labels
+
             self._scene.addItem(poly_item)
             self._annotation_items.append(poly_item)
+
+            # "MASK" label near the top-left of the polygon
+            bounds = polygon.boundingRect()
+            label = QGraphicsSimpleTextItem("MASK")
+            label.setFlag(QGraphicsSimpleTextItem.ItemIgnoresTransformations, False)
+            label.setFont(QFont("Segoe UI", 7, QFont.Weight.Bold))
+            label.setBrush(QBrush(color))
+            label.setPos(bounds.topLeft().x(), bounds.topLeft().y() - 12)
+            label.setZValue(2)
+            self._scene.addItem(label)
+            self._annotation_items.append(label)
 
     def clear_annotations(self) -> None:
         """Remove annotation items from the scene, keep the image."""
